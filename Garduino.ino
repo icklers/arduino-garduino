@@ -2,10 +2,12 @@
  * Garduino
  * Environment surveillance for growing houses
  * 
+ * GitHub: https://github.org/icklers/arduino-garduino.git
+ * 
  * (c) 2016 Sebastian Ickler
  * Licensed under BSD 3-Clause license. See LICENSE for more details.
  * 
- * [x] Read temperature and humidity from DHT-22 sesor every 10 seconds
+ * [x] Read temperature and humidity from two DHT-22 sensors every 10 seconds
  * [ ] Control fans to hold defined temperature
  * [ ] Control light cycles
  * 
@@ -15,19 +17,22 @@
  * [ ] Submit sensor data to ThingSpeak
  */
 
-#define GARDUINOVERSION 0.20
+#define GARDUINOVERSION 0.30
 
 // Libraries
 #include <DHT.h>
-//#include <Wire.h>
-//#include <Ethernet.h>
 #include <Adafruit_GFX.h>    // Core graphics library
 #include <Adafruit_TFTLCD.h> // Hardware-specific library
 
-// Configure and initialize DHT-22 Sensor
-#define DHTPIN 10        // what digital pin we're connected to
-#define DHTTYPE DHT22   // DHT 22  (AM2302), AM2321
-DHT dht(DHTPIN, DHTTYPE);
+// Configure and initialize DHT-22 Sensor 1
+#define DHT1TYPE DHT22   // DHT 22  (AM2302), AM2321
+#define DHT1PIN 10        // what digital pin we're connected to
+DHT dht1(DHT1PIN, DHT1TYPE);
+// Configure and initialize DHT-22 Sensor 2
+#define DHT2TYPE DHT22   // DHT 22  (AM2302), AM2321
+#define DHT2PIN 11        // what digital pin we're connected to
+DHT dht2(DHT2PIN, DHT2TYPE);
+
 
 // The control pins for the LCD can be assigned to any digital or
 // analog pins...but we'll use the analog pins as this allows us to
@@ -56,7 +61,7 @@ DHT dht(DHTPIN, DHTTYPE);
 #define MAGENTA 0xF81F
 #define YELLOW  0xFFE0
 #define WHITE   0xFFFF
-#define BACKGROUNDCOLOR 0x001F
+#define BACKGROUNDCOLOR 0x0014
 
 Adafruit_TFTLCD tft(LCD_CS, LCD_CD, LCD_WR, LCD_RD, LCD_RESET);
 
@@ -73,8 +78,11 @@ Adafruit_TFTLCD tft(LCD_CS, LCD_CD, LCD_WR, LCD_RD, LCD_RESET);
 //boolean lastConnected = false;
 //int failedCounter = 0;
 
-float humidity;
-float temperature;
+boolean debug = false;
+float humidity1;
+float temperature1;
+float humidity2;
+float temperature2;
 
 
 // Initial program
@@ -100,116 +108,220 @@ void setup() {
   // Initialization procedure
   // Serial output
   Serial.print("Garduino v");
-  Serial.print(GARDUINOVERSION);
+  Serial.println(GARDUINOVERSION);
 
   // TFT Output
-  tft.setCursor(70, 0);
+  tft.setCursor(70, 2);
   tft.setTextColor(GREEN); tft.setTextSize(2);
   tft.print("Garduino v");
   tft.print(GARDUINOVERSION);
   delay(3000); // wait 3 seconds
   tft.setCursor(0, 30);
-  tft.setTextColor(WHITE); tft.setTextSize(2);
-  tft.print("Initializing sensors:");
+  tft.setTextColor(WHITE); tft.setTextSize(1);
+  tft.print("Initializing sensors...");
+  delay(2000);
   
 
   /* ------------------------------------------------------------------- */
   /* Sensor initialization */
   
-  // Initialize DHT-22 Temp/Humidity sensor
-  dht.begin();
+  // Initialize sensor 1 (DHT-22 Temp/Humidity sensor)
+  dht1.begin();
+
   // Reading temperature or humidity takes about 250 milliseconds!
   // Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
-  float humidity = dht.readHumidity();
+  float humidity1 = dht1.readHumidity();
   // Read temperature as Celsius (the default)
-  float temperature = dht.readTemperature();
+  float temperature1 = dht1.readTemperature();
 
   tft.setCursor(20,50);
-  tft.print("DHT-22 Temp/Hum");
-  delay(1000);
-  tft.setCursor(20,180);
-  if (isnan(humidity) || isnan(temperature)) {
+  tft.setTextColor(WHITE); tft.setTextSize(1);
+  tft.print("Sensor 1 (DHT-22)");
+  delay(500);
+  tft.setCursor(180,50);
+  if (isnan(humidity1) || isnan(temperature1)) {
     // Serial output
-    Serial.println("DHT-22 Temp/Hum    FAIL");
+    Serial.println("Sensor 1 (DHT-22)    FAIL");
   
     // TFT output
     tft.print("[");
-    tft.setTextColor(RED); tft.setTextSize(2);
+    tft.setTextColor(RED); tft.setTextSize(1);
     tft.print(" FAIL ");
-    tft.setTextColor(WHITE); tft.setTextSize(2);
+    tft.setTextColor(WHITE); tft.setTextSize(1);
     tft.print("]");
     return;
     // TODO better: wait for confirmation
   } else {
     // Serial output
-    Serial.println("DHT-22 Temp/Hum    OK");
+    Serial.println("Sensor 1 (DHT-22)    OK");
 
     // TFT output
     tft.print("[");
-    tft.setTextColor(GREEN); tft.setTextSize(2);
+    tft.setTextColor(GREEN); tft.setTextSize(1);
     tft.print("  OK  ");
-    tft.setTextColor(WHITE); tft.setTextSize(2);
+    tft.setTextColor(WHITE); tft.setTextSize(1);
     tft.print("]");
   }
+  delay(2000);
+  // Initialize sensor 2 (DHT-22 Temp/Humidity sensor)
+  dht2.begin();
+  float humidity2 = dht2.readHumidity();
+  // Read temperature as Celsius (the default)
+  float temperature2 = dht2.readTemperature();  
+  
+  tft.setCursor(20,60);
+  tft.setTextColor(WHITE); tft.setTextSize(1);
+  tft.print("Sensor 2 (DHT-22)");
+  delay(500);
+  tft.setCursor(180,60);
+  if (isnan(humidity2) || isnan(temperature2)) {
+    // Serial output
+    Serial.println("Sensor 2 (DHT-22)    FAIL");
+  
+    // TFT output
+    tft.print("[");
+    tft.setTextColor(RED); tft.setTextSize(1);
+    tft.print(" FAIL ");
+    tft.setTextColor(WHITE); tft.setTextSize(1);
+    tft.print("]");
+    return;
+    // TODO better: wait for confirmation
+  } else {
+    // Serial output
+    Serial.println("Sensor 2 (DHT-22)    OK");
 
-
-
+    // TFT output
+    tft.print("[");
+    tft.setTextColor(GREEN); tft.setTextSize(1);
+    tft.print("  OK  ");
+    tft.setTextColor(WHITE); tft.setTextSize(1);
+    tft.print("]");
+  }
+  delay(2000);
+  tft.fillScreen(BACKGROUNDCOLOR);
 }
 
 // Repeated checks go here.
 void loop() {
-
+  
   // Reading temperature or humidity takes about 250 milliseconds!
   // Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
-  float humidity = dht.readHumidity();
+  float humidity1 = dht1.readHumidity();
+  float humidity2 = dht2.readHumidity();
+
   // Read temperature as Celsius (the default)
-  float temperature = dht.readTemperature();
+  float temperature1 = dht1.readTemperature();
+  float temperature2 = dht2.readTemperature();
 
   // Check if any reads failed and exit early (to try again).
-  if (isnan(humidity) || isnan(temperature)) {
+  // Sensor 1
+  if (isnan(humidity1) || isnan(temperature1)) {
     tft.fillScreen(BLACK);
     tft.setTextColor(RED); tft.setTextSize(2);
     tft.setCursor(70,105);
     tft.print("Failed to read");
-    tft.setCursor(58,123);
-    tft.print("from DHT sensor!");
-   
-    Serial.println("Failed to read from DHT sensor!");
-   
+    tft.setCursor(30,125);
+    tft.print("from sensor 1 (DHT-22)");
+
+    if (debug) {
+      Serial.println("Failed to read from sensor 1 (DHT-22)");
+    }
+     
     delay(5000);
     return;
   }
-  // Compute heat index in Celsius (isFahreheit = false)
-  // float hic = dht.computeHeatIndex(t, h, false);
-  tft.fillScreen(BACKGROUNDCOLOR);
-  // tft.fillRect(30, 180, 80, 80, BACKGROUNDCOLOR)
-  tft.setCursor(70, 0);
-  tft.setTextColor(GREEN); tft.setTextSize(2);
+  // Sensor 2
+  if (isnan(humidity2) || isnan(temperature2)) {
+    tft.fillScreen(BLACK);
+    tft.setTextColor(RED); tft.setTextSize(2);
+    tft.setCursor(70,105);
+    tft.print("Failed to read");
+    tft.setCursor(30,125);
+    tft.print("from sensor 2 (DHT-22)");
+    
+    if (debug) {
+      Serial.println("Failed to read from sensor 2 (DHT-22)");
+    }
+    
+    delay(5000);
+    return;
+  }
+
+  // Print version and copyright
+  tft.setCursor(5, 230);
+  tft.setTextColor(GREEN); tft.setTextSize(1);
   tft.print("Garduino v");
   tft.println(GARDUINOVERSION);
-  
+  tft.setCursor(160, 230);
+  tft.setTextColor(WHITE); tft.setTextSize(1);
+  tft.print("(c) 2016 Sebastian Ickler");
 
-  tft.setTextColor(WHITE); tft.setTextSize(2);
-  tft.setCursor(25,30);
+  // Temperature and Humidity
+  // draw a neat double frame around Temp and Hum.
+  tft.drawLine(1,9,319,9,WHITE);   // top outer line
+  tft.drawLine(3,11,317,11,WHITE); // top inner line
+  tft.drawLine(3,74,317,74,WHITE); // bottom inner line
+  tft.drawLine(1,76,319,76,WHITE); // bottom outer line
+  tft.drawLine(1,9,1,76,WHITE); // left outer line
+  tft.drawLine(3,9,3,74,WHITE); // left inner line
+  tft.drawLine(319,9,319,76,WHITE); // right outer line
+  tft.drawLine(317,9,317,74,WHITE); // right inner line
+
+  // Clear old values
+  tft.fillRect(220, 30, 29, 40, BACKGROUNDCOLOR);
+    
+  tft.setCursor(8,15);
+  tft.print("Temperature and Humidity");  
+  tft.drawLine(8,25,150,25,WHITE);
+  // Sensor 1
+  tft.setTextColor(WHITE); tft.setTextSize(1);
+  tft.setCursor(8,30);
+  tft.print("Sensor 1:");
+  tft.setCursor(120,30);
   tft.print("Temperature: ");
-  tft.setCursor(180,30);
-  tft.print(temperature);
-  tft.print(" C");
-  
+  tft.setCursor(220,30);
+  tft.print(temperature1);
+  tft.print("C");
 
-  tft.setCursor(25,50);
+  tft.setCursor(120,40);
   tft.print("Humidity: ");
-  tft.setCursor(180,50);
-  tft.print(humidity);
+  tft.setCursor(220,40);
+  tft.print(humidity1);
   tft.print("%");
-  
-  Serial.print("Temperature: ");
-  Serial.print(temperature);
-  Serial.print(" C\t");
-  Serial.print("Humidity: ");
-  Serial.print(humidity);
-  Serial.print("% ");
-  Serial.print("\n");
+
+  // Sensor 2
+  tft.setTextColor(WHITE); tft.setTextSize(1);
+  tft.setCursor(8,50);
+  tft.print("Sensor 2:");
+  tft.setCursor(120,50);
+  tft.print("Temperature: ");
+  tft.setCursor(220,50);
+  tft.print(temperature2);
+  tft.print("C");
+
+  tft.setCursor(120,60);
+  tft.print("Humidity: ");
+  tft.setCursor(220,60);
+  tft.print(humidity2);
+  tft.print("%");
+
+  if (debug){
+    Serial.print("Temp[1]: ");
+    Serial.print(temperature1);
+    Serial.print(" C\t");
+    Serial.print("Humi[1]: ");
+    Serial.print(humidity1);
+    Serial.print("% ");
+    Serial.print("\n");
+    Serial.print("Temp[2]: ");
+    Serial.print(temperature2);
+    Serial.print(" C\t");
+    Serial.print("Humi[2]: ");
+    Serial.print(humidity2);
+    Serial.print("% ");
+    Serial.print("\n");
+  }
+
   
   // Wait a few seconds between measurements.
   delay(5000);
