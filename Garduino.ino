@@ -1,6 +1,6 @@
 /*
  * Garduino
- * Environment surveillance for growing houses
+ * Environment surveillance for greenhouses
  * 
  * GitHub: https://github.org/icklers/arduino-garduino.git
  * 
@@ -27,9 +27,6 @@
 #include <Adafruit_TFTLCD.h> // Hardware-specific library
 #include <TouchScreen.h>     // Adafruit Touchscreen library
 
-// Configure I2C PCB8574 Expansion Board for relais control
-#define I2C_RELAIS_ADDRESS 0x38
-
 // Configure Real-Time-Clock
 RTC_DS1307 RTC;
 
@@ -41,6 +38,15 @@ DHT dht1(DHT1PIN, DHT1TYPE);
 #define DHT2TYPE DHT22   // DHT 22  (AM2302), AM2321
 #define DHT2PIN 11        // what digital pin we're connected to
 DHT dht2(DHT2PIN, DHT2TYPE);
+
+// 4-port relais on first I2C expansion board
+#define I2C_RELAIS_ADDRESS 0x38
+// Set the bitmasks for connected devices
+const int relaisdefault = 255; // everything deactivated
+const int light = 1;           // P0
+const int fan1 = 2;            // P1
+const int fan2 = 4;            // P2
+const int exhaust = 8;         // P3
 
 // Configuration for the TFT display
 // The control pins for the LCD can be assigned to any digital or
@@ -194,6 +200,10 @@ void setup() {
   tft.setTextColor(WHITE); tft.setTextSize(1);
   tft.setCursor(0, 30);
   tft.print("Initializing I2C devices...");
+
+  // 4-port relais on 0x38
+  // Deactivate all ports
+  relaisWrite(relaisdefault);
   /*
   tft.setCursor(180,40);
   if (! RTC.isrunning()) {
@@ -560,5 +570,36 @@ void relaisWrite(byte txData) {
   Wire.beginTransmission(I2C_RELAIS_ADDRESS);
   Wire.write(txData);
   Wire.endTransmission();
+}
+
+int relaisRead() {
+  Wire.requestFrom(I2C_RELAIS_ADDRESS, 1);
+  while(Wire.available())    // slave may send less than requested
+  { 
+    int i = Wire.read();    // receive a byte as integer
+    return i; 
+  }
+}
+
+void activateRelaisPort(int portbit) {
+  int relaisStatus = relaisRead();
+  if ((relaisStatus & portbit) == portbit) {
+    if (debug) {
+      Serial.print("Activating relais portbit ");
+      Serial.println(portbit);
+    }
+    relaisWrite(relaisStatus - portbit);  // "0" on relais means "on"
+  }
+}
+
+void deactivateRelaisPort(int portbit) {
+  int relaisStatus = relaisRead();
+  if ((relaisStatus & portbit) != portbit) {
+    if (debug) {
+      Serial.print("Deactivating relais portbit ");
+      Serial.println(portbit);
+    }
+    relaisWrite(relaisStatus + portbit);  // "1" on relais means "off"
+  }
 }
 
